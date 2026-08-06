@@ -13,4 +13,4 @@ COPY server/ .
 EXPOSE 8000
 
 # Server run command (main.py ya app/main.py ke according adjust karein)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
