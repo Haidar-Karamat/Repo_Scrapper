@@ -7,11 +7,28 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-and-push:
+  test-build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies & Pytest
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r server/requirements.txt
+          pip install pytest
+
+      - name: Run Unit Tests
+        env:
+          PYTHONPATH: server
+        run: |
+          pytest server/tests
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -31,8 +48,8 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
-          context: ./server
-          file: server/Dockerfile
+          context: .
+          file: ./server/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
