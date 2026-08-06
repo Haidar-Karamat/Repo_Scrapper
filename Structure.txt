@@ -1,0 +1,54 @@
+repo-scrapper/
+│
+├── .github/
+│   └── workflows/
+│       ├── ci-backend.yml            # Lint, test & build Docker image
+│       └── cd-azure-aks.yml          # Deploy to Azure Kubernetes Service (AKS)
+│
+├── terraform/                        # Infrastructure as Code (Azure)
+│   ├── main.tf                       # Resource Group, ACR, & AKS definition
+│   ├── variables.tf                  # Terraform variables
+│   ├── outputs.tf                    # ACR & AKS outputs
+│   └── terraform.tfvars              # Config variables
+│
+├── k8s/                              # Kubernetes Manifests
+│   ├── base/
+│   │   ├── namespace.yaml
+│   │   ├── configmap.yaml
+│   │   ├── secret.yaml               # GitHub Access Token Secret
+│   │   ├── deployment.yaml          # FastAPI Pods Deployment
+│   │   ├── service.yaml             # ClusterIP Service
+│   │   └── ingress.yaml             # NGINX Ingress Routing
+│   └── overlays/
+│       ├── dev/
+│       └── prod/
+│
+├── server/                           # Backend Engine (FastAPI)
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py                   # FastAPI Entrypoint
+│   │   ├── config.py                 # App Settings & Env Manager
+│   │   ├── parser.py                 # Rule-Based Query Extractor
+│   │   ├── github_client.py          # GitHub REST API Client
+│   │   └── models.py                 # Pydantic Data Schemas
+│   ├── tests/
+│   │   ├── __init__.py
+│   │   ├── test_parser.py
+│   │   └── test_api.py
+│   ├── Dockerfile                    # Production Multi-stage Dockerfile
+│   └── requirements.txt
+│
+├── cli/                              # CLI Client
+│   ├── repo_scrapper_cli/
+│   │   ├── __init__.py
+│   │   ├── client.py                 # HTTP Client for Server API
+│   │   ├── executor.py               # Git, VS Code & GH CLI runner
+│   │   └── ui.py                     # Rich & Questionary UI
+│   ├── main.py                       # CLI Entrypoint
+│   └── requirements.txt
+│
+├── docker-compose.yml                # Local Container Setup
+├── Makefile                          # Shortcuts for Docker/K8s/Terraform
+├── .env.example
+├── .gitignore
+└── README.md
