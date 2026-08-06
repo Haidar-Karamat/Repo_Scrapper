@@ -20,6 +20,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: "server/requirements.txt"
 
       - name: Install Server Dependencies
         run: |
@@ -29,14 +30,22 @@ jobs:
 
       - name: Lint Code with Flake8
         run: |
-          # Stop the build if there are Python syntax errors or undefined names
+          # Stop build if there are syntax errors or undefined names
           flake8 server/app --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings.
+          # Treat all other issues as warnings
           flake8 server/app --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      - name: Verify Backend Import Integrity
+      - name: Run Unit Tests with Pytest
+        env:
+          PYTHONPATH: server
         run: |
-          python -c "from server.app.main import app; print('App imported successfully!')"
+          pytest server/tests
+
+      - name: Verify Backend Import Integrity
+        env:
+          PYTHONPATH: server
+        run: |
+          python -c "from app.main import app; print('App imported successfully!')"
 
   docker-build:
     name: 🐋 Docker Multi-Stage Build Check
