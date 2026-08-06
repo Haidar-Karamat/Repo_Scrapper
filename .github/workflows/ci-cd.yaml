@@ -26,7 +26,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: your-dockerhub-username/repo-scrapper
+          images: hkkarar/repo-scrapper
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
