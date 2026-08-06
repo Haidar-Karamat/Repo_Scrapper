@@ -1,9 +1,16 @@
 from fastapi import FastAPI, Query, HTTPException
-from .models import SearchResponse
-from .parser import QueryParser
-from .github_client import GitHubClient
+from app.models import SearchResponse
+from app.parser import QueryParser
+from app.github_client import GitHubClient
+from app.endpoints import router as scraper_router
 
-app = FastAPI(title="Repo Scrapper API", version="1.0.0")
+app = FastAPI(
+    title="Repo Scrapper API",
+    description="Production-ready FastAPI backend for GitHub repository extraction",
+    version="1.0.0",
+)
+
+app.include_router(scraper_router)
 
 @app.get("/")
 def health_check():
