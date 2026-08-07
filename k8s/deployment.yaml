@@ -1,7 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: repo-scrapper-deployment
+  name: repo-scrapper-backend
+  namespace: repo-scrapper
   labels:
     app: repo-scrapper
 spec:
@@ -15,8 +16,8 @@ spec:
         app: repo-scrapper
     spec:
       containers:
-      - name: repo-scrapper
-        image: reposcrapperreg2026.azurecr.io/repo-scrapper:latest
+      - name: repo-scrapper-backend
+        image: reposcrapperreg2026.azurecr.io/repo-scrapper-backend:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8000

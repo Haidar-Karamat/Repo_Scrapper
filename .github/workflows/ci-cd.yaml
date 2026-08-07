@@ -70,10 +70,10 @@ jobs:
       - name: Build and Push Docker Image to ACR
         uses: docker/build-push-action@v6
         with:
-          context: ./server               # 👈 FIX 1: Set build context to ./server directory
+          context: ./server              
           file: ./server/Dockerfile
           push: true
-          no-cache: true                 # 👈 FIX 2: Force build without using cached layers
+          no-cache: true                 
           tags: |
             ${{ env.ACR_NAME }}/repo-scrapper-backend:latest
             ${{ env.ACR_NAME }}/repo-scrapper-backend:${{ github.sha }}
@@ -86,6 +86,11 @@ jobs:
 
       - name: Deploy Manifests to Kubernetes (AKS)
         run: |
+          # Safe idempotent creation (Does not fail if namespace exists)
+          kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Apply manifests and restart deployment
           kubectl apply -f k8s/deployment.yaml -n ${{ env.NAMESPACE }}
           kubectl apply -f k8s/service.yaml -n ${{ env.NAMESPACE }}
           kubectl rollout restart deployment/repo-scrapper-backend -n ${{ env.NAMESPACE }}
+        
