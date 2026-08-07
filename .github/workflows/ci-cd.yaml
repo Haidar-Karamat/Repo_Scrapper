@@ -92,5 +92,6 @@ jobs:
           # Apply manifests and restart deployment
           kubectl apply -f k8s/deployment.yaml -n ${{ env.NAMESPACE }}
           kubectl apply -f k8s/service.yaml -n ${{ env.NAMESPACE }}
+          kubectl set image deployment/repo-scrapper-backend repo-scrapper-backend=${{ env.ACR_NAME }}/repo-scrapper-backend:${{ github.sha }} -n ${{ env.NAMESPACE }}
           kubectl rollout restart deployment/repo-scrapper-backend -n ${{ env.NAMESPACE }}
         
