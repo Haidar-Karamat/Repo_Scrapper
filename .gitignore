@@ -15,3 +15,7 @@ terraform/.terraform/
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+
+.env
+.env.*
+!.env.example

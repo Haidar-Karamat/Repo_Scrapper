@@ -10,6 +10,7 @@ env:
   ACR_NAME: reposcrapperreg2026.azurecr.io
   RESOURCE_GROUP: repo-scrapper-rg
   CLUSTER_NAME: repo-scrapper-aks
+  NAMESPACE: repo-scrapper
 
 jobs:
   lint-and-test:
@@ -69,12 +70,13 @@ jobs:
       - name: Build and Push Docker Image to ACR
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./server               # 👈 FIX 1: Set build context to ./server directory
           file: ./server/Dockerfile
           push: true
+          no-cache: true                 # 👈 FIX 2: Force build without using cached layers
           tags: |
-            ${{ env.ACR_NAME }}/repo-scrapper:latest
-            ${{ env.ACR_NAME }}/repo-scrapper:${{ github.sha }}
+            ${{ env.ACR_NAME }}/repo-scrapper-backend:latest
+            ${{ env.ACR_NAME }}/repo-scrapper-backend:${{ github.sha }}
 
       - name: Set AKS Context
         uses: azure/aks-set-context@v3
@@ -84,6 +86,6 @@ jobs:
 
       - name: Deploy Manifests to Kubernetes (AKS)
         run: |
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
-          kubectl rollout restart deployment/repo-scrapper-deployment
+          kubectl apply -f k8s/deployment.yaml -n ${{ env.NAMESPACE }}
+          kubectl apply -f k8s/service.yaml -n ${{ env.NAMESPACE }}
+          kubectl rollout restart deployment/repo-scrapper-backend -n ${{ env.NAMESPACE }}
