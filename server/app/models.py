@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 
 
@@ -9,7 +9,7 @@ class RepoItem(BaseModel):
     description: Optional[str] = "No description provided."
     stars: int
     forks: int
-    languages: List[str]
+    languages: List[str] = Field(default_factory=list)
     clone_url: str
     default_branch: str
     topics: List[str]

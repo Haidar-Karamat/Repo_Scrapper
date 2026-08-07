@@ -40,6 +40,8 @@ class GitHubClient:
             results = []
             for item in data.get("items", []):
                 owner_data = item.get("owner") or {}
+                raw_language = item.get("language")
+                languages_list = [raw_language] if raw_language else []
                 repo = RepoItem(
                     name=item.get("name", ""),
                     full_name=item.get("full_name", ""),
@@ -47,7 +49,7 @@ class GitHubClient:
                     description=item.get("description") or "No description provided.",
                     stars=item.get("stargazers_count", 0),
                     forks=item.get("forks_count", 0),
-                    language=item.get("language") or "Unknown",
+                    languages=languages_list,
                     clone_url=item.get("clone_url", ""),
                     default_branch=item.get("default_branch", "main"),
                     topics=item.get("topics", []),
