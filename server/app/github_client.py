@@ -40,8 +40,8 @@ class GitHubClient:
             results = []
             for item in data.get("items", []):
                 owner_data = item.get("owner") or {}
-                raw_language = item.get("language")
-                languages_list = [raw_language] if raw_language else []
+                raw_lang = item.get("language")
+                languages_list = [raw_lang] if raw_lang else []
                 repo = RepoItem(
                     name=item.get("name", ""),
                     full_name=item.get("full_name", ""),
