@@ -1,49 +1,41 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: repo-scrapper-backend
-  namespace: repo-scrapper
+  name: repo-scrapper-deployment
+  labels:
+    app: repo-scrapper
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: repo-scrapper-backend
+      app: repo-scrapper
   template:
     metadata:
       labels:
-        app: repo-scrapper-backend
+        app: repo-scrapper
     spec:
       containers:
-        - name: backend
-          image: repo-scrapper-backend:latest
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8000
-          envFrom:
-            - configMapRef:
-                name: repo-scrapper-config
-          env:
-            - name: GITHUB_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: repo-scrapper-secret
-                  key: GITHUB_TOKEN
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "256Mi"
-              cpu: "250m"
-          livenessProbe:
-            httpGet:
-              path: /docs
-              port: 8000
-            initialDelaySeconds: 10
-            periodSeconds: 15
-          readinessProbe:
-            httpGet:
-              path: /docs
-              port: 8000
-            initialDelaySeconds: 5
-            periodSeconds: 10
+      - name: repo-scrapper
+        image: reposcrapperreg2026.azurecr.io/repo-scrapper:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10

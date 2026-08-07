@@ -2,12 +2,11 @@ apiVersion: v1
 kind: Service
 metadata:
   name: repo-scrapper-service
-  namespace: repo-scrapper
 spec:
-  type: ClusterIP
-  ports:
-    - port: 8000
-      targetPort: 8000
-      protocol: TCP
+  type: LoadBalancer
   selector:
-    app: repo-scrapper-backend
+    app: repo-scrapper
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000

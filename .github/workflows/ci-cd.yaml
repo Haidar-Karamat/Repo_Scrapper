@@ -1,10 +1,15 @@
-name: Repo Scrapper CI/CD Pipeline
+name: Repo Scrapper Production CI/CD Pipeline
 
 on:
   push:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
+
+env:
+  ACR_NAME: reposcrapperreg2026.azurecr.io
+  RESOURCE_GROUP: repo-scrapper-rg
+  CLUSTER_NAME: repo-scrapper-aks
 
 jobs:
   lint-and-test:
@@ -30,10 +35,8 @@ jobs:
 
       - name: Lint Code with Flake8
         run: |
-          # Stop build if there are syntax errors or undefined names
-          flake8 server/app --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Treat all other issues as warnings
-          flake8 server/app --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          flake8 server --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 server --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
       - name: Run Unit Tests with Pytest
         env:
@@ -41,45 +44,46 @@ jobs:
         run: |
           pytest server/tests
 
-      - name: Verify Backend Import Integrity
-        env:
-          PYTHONPATH: server
-        run: |
-          python -c "from app.main import app; print('App imported successfully!')"
-
-  docker-build-and-push:
-    name: 🐋 Docker Build & Push to Docker Hub
+  build-and-deploy-azure:
+    name: 🚀 Build, Push to ACR & Deploy to AKS
     needs: lint-and-test
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to Azure Container Registry (ACR)
+        run: |
+          az acr login --name ${{ env.ACR_NAME }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-      - name: Extract Metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: hkkarar/repo-scrapper
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix=
-
-      - name: Build and Push Backend Docker Image
-        uses: docker/build-push-action@v5
+      - name: Build and Push Docker Image to ACR
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./server/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: true
+          tags: |
+            ${{ env.ACR_NAME }}/repo-scrapper:latest
+            ${{ env.ACR_NAME }}/repo-scrapper:${{ github.sha }}
+
+      - name: Set AKS Context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+
+      - name: Deploy Manifests to Kubernetes (AKS)
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl rollout restart deployment/repo-scrapper-deployment
