@@ -18,7 +18,7 @@ spec:
       imagePullSecrets:
         - name: acr-secret   # ACR Private Image Auth Secret
       containers:
-      - name: backend
+      - name: repo-scrapper-backend
         image: reposcrapperreg2026.azurecr.io/repo-scrapper-backend:v1
         imagePullPolicy: Always
         ports:
