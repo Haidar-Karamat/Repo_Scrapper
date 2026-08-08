@@ -1,7 +1,8 @@
-main.py
+README.md
 pyproject.toml
 repo_scrapper_cli/client.py
 repo_scrapper_cli/executor.py
+repo_scrapper_cli/main.py
 repo_scrapper_cli/ui.py
 repo_scrapper_cli.egg-info/PKG-INFO
 repo_scrapper_cli.egg-info/SOURCES.txt

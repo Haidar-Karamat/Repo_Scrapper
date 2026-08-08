@@ -1,8 +1,17 @@
 Metadata-Version: 2.4
 Name: repo-scrapper-cli
-Version: 0.1.0
-Summary: AI-powered GitHub CLI Agent for searching, cloning, and forking repositories.
-Requires-Python: >=3.10
+Version: 1.0.0
+Summary: Smart AI-powered GitHub repository search & interactive CLI assistant
+License-Expression: MIT
+Keywords: github,cli,ai,fastapi,kubernetes,scrapper
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
 Requires-Dist: requests>=2.31.0
 Requires-Dist: rich>=13.7.0
 Requires-Dist: questionary>=2.0.1
+
+# Repo Scrapper CLI
+
+A smart AI-powered GitHub repository search & interactive CLI assistant.

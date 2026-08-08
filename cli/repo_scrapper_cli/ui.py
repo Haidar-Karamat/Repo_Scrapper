@@ -59,14 +59,11 @@ def show_results_table(results: List[Dict[str, Any]]) -> None:
     console.print(table)
 
 
-def show_connection_error() -> None:
-    console.print(
-        "\n[bold red]❌ Connection Error:[/bold red] Could not connect to API at [underline]http://localhost:8000[/underline]."
-    )
-    console.print(
-        "[bold yellow]💡 Tip:[/bold yellow] Make sure [bold green]'kubectl port-forward deployment/repo-scrapper-backend 8000:8000 -n repo-scrapper'[/bold green] is running in a separate terminal window."
-    )
+def show_connection_error(url: str = "http://localhost:8000"):
+    console.print(f"\n[bold red]❌ Connection Error:[/bold red] Could not connect to API at [underline]{url}[/underline].")
+    console.print("💡 Tip: Make sure 'kubectl port-forward deployment/repo-scrapper-backend 8000:8000 -n repo-scrapper' is running in a separate terminal window.")
 
 
-def show_error(message: str) -> None:
+def show_error(message: str):
+    """Prints an error message in rich formatted style."""
     console.print(f"\n[bold red]❌ Error:[/bold red] {message}")

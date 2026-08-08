@@ -14,6 +14,7 @@ from repo_scrapper_cli.executor import (
     fork_repository,
     open_in_ide,
 )
+import os
 
 
 def interactive_menu(results: list):
@@ -58,7 +59,7 @@ def interactive_menu(results: list):
         clone_repository(clone_url)
     elif action == "🍴 Fork to my GitHub account":
         fork_repository(full_name)
-    elif action == "💻 Clone & Open in VS Code":
+    elif action == "💻 Clone & Open in your Device":
         if clone_repository(clone_url):
             open_in_ide(full_name)
 
@@ -68,8 +69,8 @@ def main():
     parser.add_argument("prompt", type=str, help="Search query (e.g., 'fastapi', 'llm', 'react')")
     parser.add_argument("--limit", type=int, default=3, help="Number of results to return (default: 3)")
     parser.add_argument("--sort", type=str, default="stars", help="Sort strategy (stars/forks)")
-    parser.add_argument("--url", type=str, default="http://localhost:8000", help="Base API URL")
-
+    DEFAULT_API_URL = os.getenv("REPO_SCRAPPER_API_URL", "http://localhost:8000")
+    parser.add_argument("--url", type=str, default=DEFAULT_API_URL, help="Base API URL")
     args = parser.parse_args()
     client = RepoScrapperClient(base_url=args.url)
 
@@ -82,7 +83,7 @@ def main():
                 prompt=args.prompt, limit=args.limit, sort_by=args.sort
             )
         except requests.exceptions.ConnectionError:
-            show_connection_error()
+            show_connection_error(args.url)
             return
         except requests.exceptions.HTTPError as err:
             show_error(f"HTTP Error: {err}")
