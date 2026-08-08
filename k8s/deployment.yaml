@@ -15,12 +15,17 @@ spec:
       labels:
         app: repo-scrapper
     spec:
+      imagePullSecrets:
+        - name: acr-secret   # ACR Private Image Auth Secret
       containers:
-      - name: repo-scrapper-backend
-        image: reposcrapperreg2026.azurecr.io/repo-scrapper-backend:latest
+      - name: backend
+        image: reposcrapperreg2026.azurecr.io/repo-scrapper-backend:v1
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
+        envFrom:
+        - secretRef:
+            name: repo-scrapper-secrets   # 👈 Inject Grok API Keys
         resources:
           requests:
             memory: "128Mi"
