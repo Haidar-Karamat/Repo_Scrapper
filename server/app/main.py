@@ -1,49 +1,39 @@
-import os
-import requests
-from typing import List, Dict, Any
+from fastapi import FastAPI, Query, HTTPException
+from app.models import SearchResponse
+from app.parser import parse_query  
+from app.github_client import GitHubClient
+from app.endpoints import router as scraper_router
 
-class GitHubClient:
-    BASE_URL = "https://api.github.com/search/repositories"
+app = FastAPI(
+    title="Repo Scrapper API",
+    description="Production-ready FastAPI backend with Hybrid AI Query Parsing for GitHub extraction",
+    version="1.0.0",
+)
 
-    def __init__(self):
-        # Read token from environment variable
-        self.token = os.getenv("GITHUB_TOKEN", "").strip()
+app.include_router(scraper_router)
 
-    def search_repositories(self, query: str, sort: str = "stars", limit: int = 10) -> List[Dict[str, Any]]:
-        headers = {
-            "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "repo-scrapper-app"
-        }
 
-        if self.token and len(self.token) > 5 and not self.token.startswith("your_"):
-            headers["Authorization"] = f"token {self.token}"
+@app.get("/")
+def health_check():
+    return {"status": "healthy", "service": "repo-scrapper-backend"}
 
-        params = {
-            "q": query,
-            "sort": sort,
-            "order": "desc",
-            "per_page": min(limit, 50)
-        }
 
-        try:
-            response = requests.get(self.BASE_URL, headers=headers, params=params, timeout=10)
-            response.raise_for_status()
-            data = response.json()
+@app.get("/api/v1/search", response_model=SearchResponse)
+def search(
+    prompt: str = Query(..., description="Natural language search prompt"),
+    limit: int = Query(default=10, ge=1, le=50)
+):
+    if not prompt.strip():
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
-            items = data.get("items", [])
-            results = []
-            for item in items:
-                results.append({
-                    "name": item.get("name"),
-                    "full_name": item.get("full_name"),
-                    "html_url": item.get("html_url"),
-                    "description": item.get("description", ""),
-                    "stargazers_count": item.get("stargazers_count", 0),
-                    "forks_count": item.get("forks_count", 0),
-                    "language": item.get("language")
-                })
-            return results
+    query, sort_by = parse_query(prompt)
 
-        except requests.exceptions.RequestException as e:
-            print(f"[Error] GitHub API Request failed: {e}")
-            return []
+    client = GitHubClient()
+    results = client.search_repositories(query=query, sort=sort_by, limit=limit)
+
+    return SearchResponse(
+        query_used=query,
+        sort_by=sort_by,
+        total_found=len(results),
+        results=results
+    )
