@@ -7,7 +7,6 @@ from itertools import cycle
 from typing import Tuple, Dict, Set, List
 from dotenv import load_dotenv, find_dotenv
 
-# Automatically locate .env from project root or parent directories
 load_dotenv(find_dotenv(usecwd=True), override=True)
 
 logger = logging.getLogger("uvicorn.error")
@@ -160,8 +159,9 @@ class LLMQueryParser:
 
         raw_text = response.json()["choices"][0]["message"]["content"].strip()
         
-        # Clean backticks/markdown if returned by Grok
-        raw_text = re.sub(r'^```(?:json)?|```$', '', raw_text, flags=re.MULTILINE).strip()
+        json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+        if json_match:
+            raw_text = json_match.group(0)
 
         parsed_json = json.loads(raw_text)
         return parsed_json.get("query", prompt), parsed_json.get("sort", "stars")

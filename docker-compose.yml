@@ -1,18 +1,14 @@
-version: '3.8'
-
 services:
   backend:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: repo-scrapper-backend
+    container_name: repo_scrapper_backend
     ports:
-      - "8000:8000"
-    environment:
-      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - "8001:8000"  # Local machine ka port 8001 -> Container ka port 8000
+    env_file:
+      - path: ./server/.env
+        required: false
+      - path: .env
+        required: false
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3

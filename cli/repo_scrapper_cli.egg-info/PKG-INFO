@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: repo-scrapper-cli
-Version: 1.0.0
+Version: 1.2.0
 Summary: Smart AI-powered GitHub repository search & interactive CLI assistant
 License-Expression: MIT
 Keywords: github,cli,ai,fastapi,kubernetes,scrapper
