@@ -11,15 +11,22 @@ from repo_scrapper_cli.executor import clone_repository, fork_repository, open_i
 
 load_dotenv()
 
-DEFAULT_API_URL = os.getenv("REPO_SCRAPPER_API_URL", "http://localhost:8000")
+PROD_AKS_URL = "http://172.19.0.6"
+DEFAULT_API_URL = os.getenv("REPO_SCRAPPER_API_URL", PROD_AKS_URL)
 
 
 def direct_github_fallback(prompt: str, limit: int) -> dict:
-    """Direct GitHub REST API fallback with keyword cleaning."""
+    """Direct GitHub REST API fallback with English + Hinglish keyword cleaning."""
     query_lower = prompt.lower()
     
-    # Stop-words aur digits filter karein taaki GitHub query clean bane
-    stop_words = {"top", "best", "give", "me", "show", "find", "a", "an", "the", "with", "for", "in", "microservices"}
+    stop_words = {
+        "top", "best", "give", "me", "show", "find", "a", "an", "the", "with", "for", "in", "microservices", 
+        "list", "high", "stars", "repos", "projects", "repositories", "code", "repo",
+
+        "mujhe", "ke", "ka", "ki", "ko", "se", "sabse", "dikhao", "karo", "wale", "wala", "wali", 
+        "chahiye", "badhiya", "ache", "achha", "dhund", "do", "hai", "kuch", "par", "mein", "ho"
+    }
+    
     tokens = re.findall(r'\b[\w\+\-]+\b', query_lower)
     
     clean_words = []
@@ -27,14 +34,14 @@ def direct_github_fallback(prompt: str, limit: int) -> dict:
 
     for token in tokens:
         if token.isdigit():
-            continue  # "3" jaise numbers drop karein
+            continue  # Numbers drop karein
         if token in ("python", "py") and not detected_lang:
             detected_lang = "python"
             continue
         if token not in stop_words:
             clean_words.append(token)
 
-    clean_query = " ".join(clean_words).strip() or "microservice"
+    clean_query = " ".join(clean_words).strip() or "machine learning"
     if detected_lang:
         github_q = f"{clean_query} language:{detected_lang}"
     else:

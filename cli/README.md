@@ -1,19 +1,3 @@
-Metadata-Version: 2.4
-Name: repo-scrapper-cli
-Version: 1.2.1
-Summary: Smart AI-powered GitHub repository search & interactive CLI assistant
-License: MIT
-Keywords: github,cli,ai,fastapi,kubernetes,scrapper
-Classifier: Programming Language :: Python :: 3
-Classifier: Operating System :: OS Independent
-Requires-Python: >=3.9
-Description-Content-Type: text/markdown
-Requires-Dist: requests>=2.31.0
-Requires-Dist: rich>=13.7.0
-Requires-Dist: questionary>=2.0.1
-Requires-Dist: python-dotenv>=1.0.0
-Dynamic: requires-python
-
 # 📦 Repo Scrapper API & AI CLI
 
 [![PyPI Version](https://img.shields.io/pypi/v/repo-scrapper-cli.svg)](https://pypi.org/project/repo-scrapper-cli/)
