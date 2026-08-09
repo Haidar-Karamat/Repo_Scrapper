@@ -33,7 +33,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r server/requirements.txt
-          pip install flake8 pytest
+          pip install flake8 pytest httpx
 
       - name: Lint Code with Flake8
         run: |
@@ -87,14 +87,16 @@ jobs:
 
       - name: Deploy Manifests to Kubernetes (AKS)
         run: |
-          # Safe idempotent creation (Does not fail if namespace exists)
           kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
 
-          # Apply all ConfigMaps, Secrets, Deployment & Service manifests
-          kubectl apply -f k8s/ -n ${{ env.NAMESPACE }}
+          [ -f k8s/configmap.yaml ] && kubectl apply -f k8s/configmap.yaml -n ${{ env.NAMESPACE }} || true
+          [ -f k8s/secret.yaml ] && kubectl apply -f k8s/secret.yaml -n ${{ env.NAMESPACE }} || true
 
-          # Update image tag to current git commit SHA
+          kubectl apply -f k8s/deployment.yaml -n ${{ env.NAMESPACE }}
+          kubectl apply -f k8s/service.yaml -n ${{ env.NAMESPACE }}
+
+          [ -f k8s/ingress.yaml ] && kubectl apply -f k8s/ingress.yaml -n ${{ env.NAMESPACE }} || true
+
           kubectl set image deployment/repo-scrapper-backend repo-scrapper-backend=${{ env.ACR_REGISTRY }}/repo-scrapper-backend:${{ github.sha }} -n ${{ env.NAMESPACE }}
 
-          # Trigger zero-downtime rolling restart
           kubectl rollout status deployment/repo-scrapper-backend -n ${{ env.NAMESPACE }} --timeout=120s
