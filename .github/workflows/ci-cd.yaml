@@ -7,7 +7,8 @@ on:
     branches: [ "main", "master" ]
 
 env:
-  ACR_NAME: reposcrapperreg2026.azurecr.io
+  ACR_NAME: reposcrapperreg2026
+  ACR_REGISTRY: reposcrapperreg2026.azurecr.io
   RESOURCE_GROUP: repo-scrapper-rg
   CLUSTER_NAME: repo-scrapper-aks
   NAMESPACE: repo-scrapper
@@ -70,13 +71,13 @@ jobs:
       - name: Build and Push Docker Image to ACR
         uses: docker/build-push-action@v6
         with:
-          context: ./server              
+          context: ./server
           file: ./server/Dockerfile
           push: true
-          no-cache: true                 
+          no-cache: true
           tags: |
-            ${{ env.ACR_NAME }}/repo-scrapper-backend:latest
-            ${{ env.ACR_NAME }}/repo-scrapper-backend:${{ github.sha }}
+            ${{ env.ACR_REGISTRY }}/repo-scrapper-backend:latest
+            ${{ env.ACR_REGISTRY }}/repo-scrapper-backend:${{ github.sha }}
 
       - name: Set AKS Context
         uses: azure/aks-set-context@v3
@@ -88,10 +89,12 @@ jobs:
         run: |
           # Safe idempotent creation (Does not fail if namespace exists)
           kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
-          
-          # Apply manifests and restart deployment
-          kubectl apply -f k8s/deployment.yaml -n ${{ env.NAMESPACE }}
-          kubectl apply -f k8s/service.yaml -n ${{ env.NAMESPACE }}
-          kubectl set image deployment/repo-scrapper-backend repo-scrapper-backend=${{ env.ACR_NAME }}/repo-scrapper-backend:${{ github.sha }} -n ${{ env.NAMESPACE }}
-          kubectl rollout restart deployment/repo-scrapper-backend -n ${{ env.NAMESPACE }}
-        
+
+          # Apply all ConfigMaps, Secrets, Deployment & Service manifests
+          kubectl apply -f k8s/ -n ${{ env.NAMESPACE }}
+
+          # Update image tag to current git commit SHA
+          kubectl set image deployment/repo-scrapper-backend repo-scrapper-backend=${{ env.ACR_REGISTRY }}/repo-scrapper-backend:${{ github.sha }} -n ${{ env.NAMESPACE }}
+
+          # Trigger zero-downtime rolling restart
+          kubectl rollout status deployment/repo-scrapper-backend -n ${{ env.NAMESPACE }} --timeout=120s
