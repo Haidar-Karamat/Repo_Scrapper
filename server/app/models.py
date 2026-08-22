@@ -1,4 +1,4 @@
-
+# server/app/models.py
 from pydantic import BaseModel
 from typing import List, Optional
 
@@ -12,6 +12,7 @@ class Repository(BaseModel):
     stars: Optional[int] = 0
     forks: Optional[int] = 0
     language: Optional[str] = "N/A"
+    languages: Optional[List[str]] = []
     default_branch: Optional[str] = "main"
     topics: Optional[List[str]] = []
 

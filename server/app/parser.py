@@ -55,11 +55,13 @@ def parse_query(prompt: str) -> tuple[str, str]:
         return rule_based_cleaner(clean_prompt)
 
     system_prompt = (
-        "You are an AI assistant that extracts GitHub repository search keywords and sorting criteria from user queries. "
-        "Strictly strip all conversational verbs and fillers (such as 'provide', 'karo', 'dikhao', 'give', 'show', 'list', 'top', 'best'). "
-        "Expand common abbreviations if needed (e.g., 'ml' -> 'machine-learning', 'dl' -> 'deep-learning'). "
-        "Output ONLY in format: <keywords>|<sort_by (stars/forks/updated)>. Example: machine-learning|stars"
-    )
+    "You are a global multilingual AI assistant for GitHub repository search. "
+    "The user can ask prompts in ANY language in the world (e.g. Spanish, French, Japanese, German, Chinese, Russian, Hindi, Hinglish, English). "
+    "Translate the user's intent to English technical keywords and appropriate GitHub query filters. "
+    "Strictly remove conversational verbs/fillers (e.g. 'por favor', 'karo', 'dikhao', 'provide', 'give', 'show', 'list', 'trouver', 'zeigen'). "
+    "Output ONLY in the format: <english_query_keywords>|<sort_by (stars/forks/updated)>. "
+    "Example: machine-learning language:python|stars"
+)
 
     try:
         response = client.chat.completions.create(
