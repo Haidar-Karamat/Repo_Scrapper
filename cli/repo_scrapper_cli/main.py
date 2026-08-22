@@ -11,7 +11,6 @@ from repo_scrapper_cli.executor import clone_repository, fork_repository, open_i
 
 load_dotenv()
 
-# Update this with your live Azure Container App / Backend URL
 PROD_BACKEND_URL = "https://repo-scrapper-backend.politebush-f4d88b8a.eastasia.azurecontainerapps.io"
 DEFAULT_API_URL = os.getenv("REPO_SCRAPPER_API_URL", PROD_BACKEND_URL)
 
@@ -92,16 +91,21 @@ def fetch_repositories(prompt: str, limit: int, base_url: str) -> dict:
     api_endpoint = f"{base_url.rstrip('/')}/api/v1/search"
     
     try:
-        response = requests.get(api_endpoint, params={"prompt": prompt, "limit": limit}, timeout=6)
+        # Timeout 30 seconds set kiya gaya hai for Container App cold start
+        response = requests.get(
+            api_endpoint, 
+            params={"prompt": prompt, "limit": limit}, 
+            timeout=30
+        )
         response.raise_for_status()
         data = response.json()
         return {
-            "query_used": f"{data['query_used']} (Sort: {data.get('sort_by', 'stars')})",
+            "query_used": f"{data.get('query_used', prompt)} (Sort: {data.get('sort_by', 'stars')}) [Production Server]",
             "total_found": data.get("total_found", len(data.get("results", []))),
             "results": data.get("results", [])
         }
-    except Exception:
-        console.print("[dim yellow]⚠️ Backend server unreachable. Switching to Direct GitHub Fallback...[/dim yellow]\n")
+    except Exception as e:
+        console.print(f"[dim yellow]⚠️ Backend server unreachable ({e}). Switching to Direct GitHub Fallback...[/dim yellow]\n")
         return direct_github_fallback(prompt, limit)
 
 
