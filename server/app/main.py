@@ -1,39 +1,45 @@
 from fastapi import FastAPI, Query, HTTPException
+from cachetools import TTLCache
 from app.models import SearchResponse
 from app.parser import parse_query  
 from app.github_client import GitHubClient
-from app.endpoints import router as scraper_router
 
 app = FastAPI(
     title="Repo Scrapper API",
-    description="Production-ready FastAPI backend with Hybrid AI Query Parsing for GitHub extraction",
-    version="1.0.0",
+    description="High-performance GitHub search parser",
+    version="1.3.2"
 )
 
-app.include_router(scraper_router)
-
+# Cache 500 queries for 15 minutes
+search_cache = TTLCache(maxsize=500, ttl=900)
+client = GitHubClient()
 
 @app.get("/")
 def health_check():
     return {"status": "healthy", "service": "repo-scrapper-backend"}
-
 
 @app.get("/api/v1/search", response_model=SearchResponse)
 def search(
     prompt: str = Query(..., description="Natural language search prompt"),
     limit: int = Query(default=10, ge=1, le=50)
 ):
-    if not prompt.strip():
+    clean_prompt = prompt.strip()
+    if not clean_prompt:
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
-    query, sort_by = parse_query(prompt)
+    cache_key = f"{clean_prompt.lower()}:{limit}"
+    if cache_key in search_cache:
+        return search_cache[cache_key]
 
-    client = GitHubClient()
+    query, sort_by = parse_query(clean_prompt)
     results = client.search_repositories(query=query, sort=sort_by, limit=limit)
 
-    return SearchResponse(
+    response = SearchResponse(
         query_used=query,
         sort_by=sort_by,
         total_found=len(results),
         results=results
     )
+    
+    search_cache[cache_key] = response
+    return response

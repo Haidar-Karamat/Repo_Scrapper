@@ -1,4 +1,3 @@
-
 import os
 import requests
 from typing import List, Dict, Any
@@ -7,12 +6,13 @@ class GitHubClient:
     def __init__(self):
         self.token = os.getenv("GITHUB_TOKEN", "")
         self.base_url = "https://api.github.com"
-        self.headers = {
+        self.session = requests.Session()
+        self.session.headers.update({
             "Accept": "application/vnd.github.v3+json",
             "User-Agent": "repo-scrapper-backend"
-        }
-        if self.token:
-            self.headers["Authorization"] = f"token {self.token}"
+        })
+        if self.token and not self.token.startswith("your_"):
+            self.session.headers.update({"Authorization": f"token {self.token}"})
 
     def search_repositories(self, query: str, sort: str = "stars", limit: int = 10) -> List[Dict[str, Any]]:
         url = f"{self.base_url}/search/repositories"
@@ -24,14 +24,12 @@ class GitHubClient:
         }
 
         try:
-            response = requests.get(url, headers=self.headers, params=params, timeout=15)
+            response = self.session.get(url, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
-            items = data.get("items", [])
             
-            # Map GitHub API fields directly to what Pydantic model expects
             formatted_repos = []
-            for item in items:
+            for item in data.get("items", []):
                 owner_val = item.get("owner", {})
                 owner_name = owner_val.get("login", "") if isinstance(owner_val, dict) else str(owner_val)
                 
@@ -50,5 +48,5 @@ class GitHubClient:
                 })
             return formatted_repos
         except Exception as e:
-            print(f"GitHub search error: {e}")
+            print(f"GitHub search failed: {e}")
             return []
