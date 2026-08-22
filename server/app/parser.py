@@ -10,75 +10,64 @@ def get_groq_client():
     if groq_client is None:
         api_key = os.getenv("GROQ_API_KEY")
         if api_key and not api_key.startswith("your_"):
-            groq_client = Groq(api_key=api_key, timeout=2.5)
+            groq_client = Groq(api_key=api_key, timeout=4.0)
     return groq_client
 
 
-def rule_based_cleaner(prompt: str) -> tuple[str, str]:
-    """0ms offline keyword parser fallback for English & Hinglish prompts."""
-    stop_words = {
-        "top", "best", "give", "me", "show", "find", "a", "an", "the", "with", "for", "in", 
-        "list", "high", "stars", "repos", "projects", "repositories", "code", "repo", "provide",
-        "mujhe", "ke", "ka", "ki", "ko", "se", "sabse", "dikhao", "karo", "wale", "wala", "wali", 
-        "chahiye", "badhiya", "ache", "achha", "dhund", "do", "hai", "kuch", "par", "mein", "batao", "lao"
-    }
-    tokens = re.findall(r'\b[\w\+\-]+\b', prompt.lower())
-    clean_words = []
-    
-    for t in tokens:
-        if t.isdigit() or t in stop_words:
-            continue
-        if t == "ml":
-            clean_words.append("machine-learning")
-        elif t == "ai":
-            clean_words.append("artificial-intelligence")
-        elif t in ("py", "python3"):
-            clean_words.append("python")
-        else:
-            clean_words.append(t)
+UNIVERSAL_SYSTEM_PROMPT = """You are a deterministic search-intent compiler for developer repositories.
 
-    clean_query = " ".join(clean_words).strip() or prompt.strip()
-    return clean_query, "stars"
+Input: User query in ANY human language, dialect, or mixed vernacular.
+Output Contract: <english_technical_keywords>|<sort_by>
+
+OPERATIONAL RULES:
+1. SEMANTIC TRANSLATION: Translate core technical concepts into standard English developer terminology (e.g., framework names, paradigms, infrastructure components).
+2. NOISE PRUNING: Discard all grammatical padding, greetings, conversational verbs, subjective adjectives (e.g., 'best', 'top', 'awesome'), and politeness markers regardless of the source language.
+3. ENTITY ISOLATION: Keep only actionable technical entities (programming languages, libraries, platforms, design patterns).
+4. SORT RESOLUTION: Infer target sorting criteria strictly from intent:
+   - Popularity / Reputation -> 'stars' (Default)
+   - Reusability / Template / Forks -> 'forks'
+   - Recency / Active maintenance -> 'updated'
+5. OUTPUT CONSTRAINTS: Return ONLY the formatted string without explanations, Markdown formatting, or quotes."""
 
 
-@lru_cache(maxsize=512)
+@lru_cache(maxsize=1024)
 def parse_query(prompt: str) -> tuple[str, str]:
     clean_prompt = prompt.strip()
-
-    # Fast path for very short simple queries without conversational fillers
-    words = clean_prompt.split()
-    if len(words) <= 2 and not any(w in clean_prompt.lower() for w in ["mujhe", "best", "top", "chahiye", "provide", "karo", "dikhao"]):
-        return clean_prompt, "stars"
+    if not clean_prompt:
+        return "", "stars"
 
     client = get_groq_client()
     if not client:
-        return rule_based_cleaner(clean_prompt)
-
-    system_prompt = (
-    "You are a global multilingual AI assistant for GitHub repository search. "
-    "The user can ask prompts in ANY language in the world (e.g. Spanish, French, Japanese, German, Chinese, Russian, Hindi, Hinglish, English). "
-    "Translate the user's intent to English technical keywords and appropriate GitHub query filters. "
-    "Strictly remove conversational verbs/fillers (e.g. 'por favor', 'karo', 'dikhao', 'provide', 'give', 'show', 'list', 'trouver', 'zeigen'). "
-    "Output ONLY in the format: <english_query_keywords>|<sort_by (stars/forks/updated)>. "
-    "Example: machine-learning language:python|stars"
-)
+        # Fallback if AI service is completely unavailable
+        fallback_query = re.sub(r'[^\w\s\-\.]', '', clean_prompt)
+        return fallback_query, "stars"
 
     try:
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": UNIVERSAL_SYSTEM_PROMPT},
                 {"role": "user", "content": clean_prompt}
             ],
-            max_tokens=25,
+            max_tokens=30,
             temperature=0.0
         )
-        output = response.choices[0].message.content.strip()
-        if "|" in output:
-            parts = output.split("|")
+        
+        raw_output = response.choices[0].message.content.strip()
+        
+        # Clean any accidental wrapping characters
+        raw_output = raw_output.replace("`", "").replace('"', '').replace("'", "")
+        
+        if "|" in raw_output:
+            parts = raw_output.split("|")
             query = parts[0].strip()
             sort_by = parts[1].strip().lower()
-            return query, sort_by
-        return output, "stars"
+            if sort_by not in ("stars", "forks", "updated"):
+                sort_by = "stars"
+            return query or clean_prompt, sort_by
+            
+        return raw_output, "stars"
+        
     except Exception:
-        return rule_based_cleaner(clean_prompt)
+        fallback_query = re.sub(r'[^\w\s\-\.]', '', clean_prompt)
+        return fallback_query, "stars"
