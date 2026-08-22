@@ -1,54 +1,54 @@
+
 import os
 import requests
 from typing import List, Dict, Any
 
 class GitHubClient:
-    BASE_URL = "https://api.github.com/search/repositories"
-
     def __init__(self):
-        token_candidate = os.getenv("GITHUB_TOKEN", "").strip()
-        # Ensure it's not a placeholder
-        if token_candidate and len(token_candidate) > 15 and not token_candidate.lower().startswith(("your_", "ghp_your_", "dummy")):
-            self.token = token_candidate
-        else:
-            self.token = ""
+        self.token = os.getenv("GITHUB_TOKEN", "")
+        self.base_url = "https://api.github.com"
+        self.headers = {
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "repo-scrapper-backend"
+        }
+        if self.token:
+            self.headers["Authorization"] = f"token {self.token}"
 
     def search_repositories(self, query: str, sort: str = "stars", limit: int = 10) -> List[Dict[str, Any]]:
-        headers = {
-            "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "repo-scrapper-app"
-        }
-
-        # Send Authorization header ONLY if a valid token exists
-        if self.token:
-            headers["Authorization"] = f"token {self.token}"
-
+        url = f"{self.base_url}/search/repositories"
         params = {
             "q": query,
             "sort": sort,
             "order": "desc",
-            "per_page": min(limit, 50)
+            "per_page": limit
         }
 
         try:
-            response = requests.get(self.BASE_URL, headers=headers, params=params, timeout=10)
+            response = requests.get(url, headers=self.headers, params=params, timeout=15)
             response.raise_for_status()
             data = response.json()
-
             items = data.get("items", [])
-            results = []
+            
+            # Map GitHub API fields directly to what Pydantic model expects
+            formatted_repos = []
             for item in items:
-                results.append({
-                    "name": item.get("name"),
-                    "full_name": item.get("full_name"),
-                    "html_url": item.get("html_url"),
-                    "description": item.get("description", ""),
-                    "stargazers_count": item.get("stargazers_count", 0),
-                    "forks_count": item.get("forks_count", 0),
-                    "language": item.get("language")
+                owner_val = item.get("owner", {})
+                owner_name = owner_val.get("login", "") if isinstance(owner_val, dict) else str(owner_val)
+                
+                formatted_repos.append({
+                    "name": item.get("name", ""),
+                    "full_name": item.get("full_name", ""),
+                    "description": item.get("description") or "No description provided.",
+                    "html_url": item.get("html_url", ""),
+                    "clone_url": item.get("clone_url") or f"{item.get('html_url', '')}.git",
+                    "owner": owner_name,
+                    "stars": item.get("stargazers_count", 0),
+                    "forks": item.get("forks_count", 0),
+                    "language": item.get("language") or "N/A",
+                    "default_branch": item.get("default_branch", "main"),
+                    "topics": item.get("topics", [])
                 })
-            return results
-
-        except requests.exceptions.RequestException as e:
-            print(f"[Error] GitHub API Request failed: {e}")
+            return formatted_repos
+        except Exception as e:
+            print(f"GitHub search error: {e}")
             return []
