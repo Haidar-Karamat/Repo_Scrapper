@@ -71,7 +71,6 @@ async def generate_llm_context(payload: LLMContextRequest):
         branch = payload.branch or meta["default_branch"]
         tree = await github_service.get_repo_tree(owner, repo, branch=branch)
 
-        # File extensions & size filtration
         allowed_exts = tuple(ext.lower() for ext in payload.file_extensions) if payload.file_extensions else None
         max_bytes = payload.max_file_size_kb * 1024
 
@@ -91,10 +90,8 @@ async def generate_llm_context(payload: LLMContextRequest):
         if not selected_paths:
             raise HTTPException(status_code=400, detail="No matching code files found for specified extension and size filters.")
 
-        # Batch async fetch
         file_contents = await github_service.fetch_files_batch(owner, repo, selected_paths, branch=branch)
 
-        # Structure Prompt Context
         prompt_parts = [
             f"# Repository Context: {owner}/{repo}",
             f"**Description**: {meta.get('description') or 'N/A'}",

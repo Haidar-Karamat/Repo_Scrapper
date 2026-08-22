@@ -11,8 +11,9 @@ from repo_scrapper_cli.executor import clone_repository, fork_repository, open_i
 
 load_dotenv()
 
-PROD_AKS_URL = "http://172.19.0.6"
-DEFAULT_API_URL = os.getenv("REPO_SCRAPPER_API_URL", PROD_AKS_URL)
+# Update this with your live Azure Container App / Backend URL
+PROD_BACKEND_URL = "https://repo-scrapper-backend.politebush-f4d88b8a.eastasia.azurecontainerapps.io"
+DEFAULT_API_URL = os.getenv("REPO_SCRAPPER_API_URL", PROD_BACKEND_URL)
 
 
 def direct_github_fallback(prompt: str, limit: int) -> dict:
@@ -22,7 +23,6 @@ def direct_github_fallback(prompt: str, limit: int) -> dict:
     stop_words = {
         "top", "best", "give", "me", "show", "find", "a", "an", "the", "with", "for", "in", "microservices", 
         "list", "high", "stars", "repos", "projects", "repositories", "code", "repo",
-
         "mujhe", "ke", "ka", "ki", "ko", "se", "sabse", "dikhao", "karo", "wale", "wala", "wali", 
         "chahiye", "badhiya", "ache", "achha", "dhund", "do", "hai", "kuch", "par", "mein", "ho"
     }
@@ -34,7 +34,7 @@ def direct_github_fallback(prompt: str, limit: int) -> dict:
 
     for token in tokens:
         if token.isdigit():
-            continue  # Numbers drop karein
+            continue
         if token in ("python", "py") and not detected_lang:
             detected_lang = "python"
             continue
@@ -147,20 +147,69 @@ def interactive_menu(results: list):
         webbrowser.open(html_url)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Repo Scrapper Hybrid AI CLI")
-    parser.add_argument("prompt", type=str, help="Search query")
-    parser.add_argument("--limit", type=int, default=3, help="Result count limit")
-    parser.add_argument("--url", type=str, default=DEFAULT_API_URL, help="Backend API Base URL")
-    args = parser.parse_args()
+def execute_search_flow(prompt: str, limit: int, base_url: str):
+    """Executes the search, renders table and opens action menu."""
+    with console.status(f"[bold cyan]AI Searching for '[bold yellow]{prompt}[/bold yellow]'...", spinner="dots"):
+        data = fetch_repositories(prompt=prompt, limit=limit, base_url=base_url)
 
-    with console.status(f"[bold cyan]AI Searching for '[bold yellow]{args.prompt}[/bold yellow]'...", spinner="dots"):
-        data = fetch_repositories(prompt=args.prompt, limit=args.limit, base_url=args.url)
-
-    if data:
+    if data and data.get("results"):
         show_header(data["query_used"], data["total_found"], len(data["results"]))
         show_results_table(data["results"])
         interactive_menu(data["results"])
+    else:
+        console.print("[red]No matching repositories found. Try another query.[/red]\n")
+
+
+def interactive_prompt_loop(default_limit: int, base_url: str):
+    """Activates when user runs 'repo-scrapper' directly without arguments."""
+    console.print("\n[bold cyan]🚀 Welcome to Repo Scrapper AI CLI![/bold cyan]")
+    console.print("[dim]Type your natural language search query below (or 'exit' to quit).\n[/dim]")
+
+    while True:
+        prompt = questionary.text(
+            "Enter repository search prompt:",
+            qmark="🔍"
+        ).ask()
+
+        if not prompt or prompt.strip().lower() in ["exit", "quit", "q"]:
+            console.print("[yellow]Exiting Repo Scrapper. Happy coding! 👋[/yellow]")
+            break
+
+        limit_choice = questionary.select(
+            "How many repositories to fetch?",
+            choices=["3", "5", "10", "15"],
+            default=str(default_limit)
+        ).ask()
+
+        if not limit_choice:
+            break
+
+        execute_search_flow(prompt.strip(), int(limit_choice), base_url)
+
+        # Ask if user wants to search again
+        search_again = questionary.confirm("Do you want to search for another repo?", default=True).ask()
+        if not search_again:
+            console.print("[cyan]Goodbye! 👋[/cyan]")
+            break
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="repo-scrapper",
+        description="AI-powered GitHub repository search and scraping CLI tool."
+    )
+    # nargs='?' makes prompt argument completely optional
+    parser.add_argument("prompt", nargs="?", type=str, default=None, help="Search query (Optional in interactive mode)")
+    parser.add_argument("--limit", type=int, default=3, help="Result count limit (default: 3)")
+    parser.add_argument("--url", type=str, default=DEFAULT_API_URL, help="Backend API Base URL")
+    args = parser.parse_args()
+
+    if args.prompt is None:
+        # Activated when user types simply `repo-scrapper`
+        interactive_prompt_loop(default_limit=args.limit, base_url=args.url)
+    else:
+        # Single-command direct execution mode
+        execute_search_flow(prompt=args.prompt, limit=args.limit, base_url=args.url)
 
 
 if __name__ == "__main__":

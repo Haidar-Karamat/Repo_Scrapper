@@ -7,11 +7,8 @@ on:
     branches: [ "main", "master" ]
 
 env:
-  ACR_NAME: reposcrapperreg2026
-  ACR_REGISTRY: reposcrapperreg2026.azurecr.io
   RESOURCE_GROUP: repo-scrapper-rg
-  CLUSTER_NAME: repo-scrapper-aks
-  NAMESPACE: repo-scrapper
+  CONTAINER_APP_NAME: repo-scrapper-backend
 
 jobs:
   lint-and-test:
@@ -44,10 +41,10 @@ jobs:
         env:
           PYTHONPATH: server
         run: |
-          pytest server/tests
+          pytest server/tests -v
 
-  build-and-deploy-azure:
-    name: 🚀 Build, Push to ACR & Deploy to AKS
+  build-and-deploy:
+    name: 🚀 Build, Push to Docker Hub & Deploy to Azure Container App
     needs: lint-and-test
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
@@ -56,19 +53,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Log in to Azure Container Registry (ACR)
-        run: |
-          az acr login --name ${{ env.ACR_NAME }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and Push Docker Image to ACR
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build and Push Docker Image to Docker Hub
         uses: docker/build-push-action@v6
         with:
           context: ./server
@@ -76,27 +70,21 @@ jobs:
           push: true
           no-cache: true
           tags: |
-            ${{ env.ACR_REGISTRY }}/repo-scrapper-backend:latest
-            ${{ env.ACR_REGISTRY }}/repo-scrapper-backend:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/repo-scrapper-backend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/repo-scrapper-backend:${{ github.sha }}
 
-      - name: Set AKS Context
-        uses: azure/aks-set-context@v3
+      - name: Azure Login
+        uses: azure/login@v2
         with:
-          resource-group: ${{ env.RESOURCE_GROUP }}
-          cluster-name: ${{ env.CLUSTER_NAME }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy Manifests to Kubernetes (AKS)
-        run: |
-          kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
-
-          [ -f k8s/configmap.yaml ] && kubectl apply -f k8s/configmap.yaml -n ${{ env.NAMESPACE }} || true
-          [ -f k8s/secret.yaml ] && kubectl apply -f k8s/secret.yaml -n ${{ env.NAMESPACE }} || true
-
-          kubectl apply -f k8s/deployment.yaml -n ${{ env.NAMESPACE }}
-          kubectl apply -f k8s/service.yaml -n ${{ env.NAMESPACE }}
-
-          [ -f k8s/ingress.yaml ] && kubectl apply -f k8s/ingress.yaml -n ${{ env.NAMESPACE }} || true
-
-          kubectl set image deployment/repo-scrapper-backend repo-scrapper-backend=${{ env.ACR_REGISTRY }}/repo-scrapper-backend:${{ github.sha }} -n ${{ env.NAMESPACE }}
-
-          kubectl rollout status deployment/repo-scrapper-backend -n ${{ env.NAMESPACE }} --timeout=120s
+      - name: Deploy to Serverless Azure Container App
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          imageToDeploy: ${{ secrets.DOCKERHUB_USERNAME }}/repo-scrapper-backend:${{ github.sha }}
+          containerAppName: ${{ env.CONTAINER_APP_NAME }}
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          environmentVariables: |
+            GROQ_API_KEY_1=${{ secrets.GROQ_API_KEY_1 }}
+            GROQ_API_KEY_2=${{ secrets.GROQ_API_KEY_2 }}
+            GITHUB_TOKEN=${{ secrets.GH_TOKEN }}

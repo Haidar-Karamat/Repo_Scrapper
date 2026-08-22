@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    GITHUB_TOKEN: str = ""  # Optional: GitHub PAT for 5,000 req/hr limit
+    GITHUB_TOKEN: str = ""  
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
