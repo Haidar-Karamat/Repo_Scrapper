@@ -45,7 +45,14 @@ def show_results_table(results: List[Dict[str, Any]]) -> None:
         forks = repo.get("forks", 0)
         stats_str = f"⭐ {stars:,}\n🍴 {forks:,}"
 
-        langs = ", ".join(repo.get("languages") or []) or "N/A"
+        # ⚡ Language extraction fix: handles both single string & list
+        lang_data = repo.get("language") or repo.get("languages")
+        if isinstance(lang_data, list):
+            langs = ", ".join([str(l) for l in lang_data if l]) or "N/A"
+        elif isinstance(lang_data, str) and lang_data.strip():
+            langs = lang_data.strip()
+        else:
+            langs = "N/A"
 
         desc = repo.get("description") or "No description provided."
         topics_list = repo.get("topics") or []
@@ -61,7 +68,6 @@ def show_results_table(results: List[Dict[str, Any]]) -> None:
 
 def show_connection_error(url: str = "http://localhost:8000"):
     console.print(f"\n[bold red]❌ Connection Error:[/bold red] Could not connect to API at [underline]{url}[/underline].")
-    console.print("💡 Tip: Make sure 'kubectl port-forward deployment/repo-scrapper-backend 8000:8000 -n repo-scrapper' is running in a separate terminal window.")
 
 
 def show_error(message: str):
